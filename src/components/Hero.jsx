@@ -30,85 +30,90 @@ const Hero = ({ onPreloadComplete }) => {
     document.body.removeChild(resume);
   };
 
-  const toggleMute = () => {
+  // The walk and the voice are now driven by the exact same state, so they
+  // can never drift apart: while muted, the video is PAUSED (she stands
+  // still); the instant it's unmuted, the video PLAYS (she walks) at the
+  // same time the voiceover plays. There's no separate "sync" bookkeeping
+  // needed anymore — one flag controls both.
+  const playBoth = () => {
     const audio = audioRef.current;
-    if (!audio) return;
-    const next = !audio.muted;
-    audio.muted = next;
-    if (!next) audio.play().catch(() => {});
-    setIsMuted(next);
+    const video = videoRef.current;
+    if (audio) {
+      audio.muted = false;
+      audio.play().catch(() => {});
+    }
+    if (video) {
+      video.play().catch(() => {});
+    }
+    setIsMuted(false);
   };
 
-  // Only one audio source plays in the Hero: the voiceover (<audio>,
-  // hero-voice.mp3). The background video stays muted at all times — it is
-  // purely visual, and it keeps the native `autoPlay` HTML attribute (see
-  // JSX below) rather than being started only from JS: `autoPlay` on a muted
-  // <video> is the most reliable, battle-tested autoplay path across mobile
-  // browsers and in-app webviews, and some of those environments never
-  // reliably fire a JS-triggered `.play()` for ANY media element (video or
-  // audio) without a real tap — a Hero that only starts moving once JS
-  // manages to play it is the "video stays frozen/blank on mobile" bug.
-  // Native autoPlay guarantees the video is always moving, on every device.
-  //
-  // To still keep the walk and the voiceover starting together (rather than
-  // the voice starting from its own beginning while the video is already
-  // partway through), the video is RESTARTED (seeked to 0 and replayed) at
-  // the exact instant the voiceover actually begins playing — whichever path
-  // gets there first: immediate unmuted autoplay, muted autoplay, or the
-  // user's first click/tap/scroll/key. In the common case that happens
-  // within a fraction of a second of mount, so the restart is imperceptible;
-  // in the rare case the voice is delayed until a user gesture, the video
-  // was already looping quietly and simply resets in sync with that tap.
+  const pauseBoth = () => {
+    const audio = audioRef.current;
+    const video = videoRef.current;
+    if (audio) {
+      audio.pause();
+      audio.muted = true;
+    }
+    if (video) {
+      video.pause();
+    }
+    setIsMuted(true);
+  };
+
+  const toggleMute = () => {
+    if (isMuted) {
+      playBoth();
+    } else {
+      pauseBoth();
+    }
+  };
+
+  // On mount, the video sits paused on its poster frame (she's standing
+  // still) and the voiceover is muted/paused — this is deterministic on
+  // every device, including mobile, since nothing needs to autoplay at all.
+  // We only attempt one thing automatically: a real unmuted-audio autoplay,
+  // which most browsers block; if the browser allows it, she starts walking
+  // and talking immediately. Otherwise she stays still until the visitor
+  // unmutes (via the button) or interacts with the page — at which point
+  // both play, together, from the beginning.
   useEffect(() => {
     const audio = audioRef.current;
     const video = videoRef.current;
-    if (!audio) return;
+    if (!audio || !video) return;
 
-    let synced = false;
-    const restartVideoInSync = () => {
-      if (synced) return;
-      synced = true;
-      if (video) {
-        video.currentTime = 0;
-        video.play().catch(() => {});
-      }
-    };
+    video.pause();
 
-    const tryUnmutedPlay = () => {
+    let started = false;
+    const tryAutoplayUnmuted = () => {
       audio.muted = false;
       const playPromise = audio.play();
       if (playPromise !== undefined) {
         playPromise
           .then(() => {
+            started = true;
             setIsMuted(false);
-            restartVideoInSync();
+            video.currentTime = 0;
+            video.play().catch(() => {});
           })
           .catch(() => {
-            // Unmuted autoplay blocked — fall back to muted autoplay, still
-            // restarting the video at that same moment so they stay in sync.
+            // Blocked, as expected in most browsers — stay muted and still
+            // until the visitor unmutes or interacts with the page.
             audio.muted = true;
+            audio.pause();
             setIsMuted(true);
-            audio.play().then(restartVideoInSync).catch(() => {
-              // Even muted autoplay was blocked — wait for user interaction.
-              // The video keeps playing on its own via autoPlay regardless.
-            });
           });
       }
     };
 
-    tryUnmutedPlay();
+    tryAutoplayUnmuted();
 
     const unmuteOnInteraction = () => {
-      audio.muted = false;
-      setIsMuted(false);
-      if (!synced) {
-        // Voice hasn't played yet — start it fresh and resync the video.
-        audio.currentTime = 0;
-        audio.play().then(restartVideoInSync).catch(() => {});
-      } else {
-        // Already playing (muted) in sync — just unmute, don't restart it.
-        audio.play().catch(() => {});
-      }
+      if (started) return;
+      started = true;
+      audio.currentTime = 0;
+      video.currentTime = 0;
+      playBoth();
       window.removeEventListener('click', unmuteOnInteraction);
       window.removeEventListener('touchstart', unmuteOnInteraction);
       window.removeEventListener('keydown', unmuteOnInteraction);
@@ -128,22 +133,26 @@ const Hero = ({ onPreloadComplete }) => {
     };
   }, []);
 
-  // Stop the voiceover once the user scrolls past the Hero section, and
-  // resume it automatically if they scroll back up into view. The background
-  // video keeps playing/looping visually the whole time either way (it's
-  // just a background) and stays muted throughout — only the voiceover's
-  // play/pause state changes here.
+  // Pause both when the user scrolls past the Hero, and resume both
+  // automatically if they scroll back up into view — but only if the
+  // visitor had actually unmuted; if still muted, there's nothing playing
+  // to pause/resume.
   useEffect(() => {
     const audio = audioRef.current;
+    const video = videoRef.current;
     const section = heroSectionRef.current;
     if (!audio || !section) return;
 
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
-          audio.play().catch(() => {});
+          if (!audio.muted) {
+            audio.play().catch(() => {});
+            video?.play().catch(() => {});
+          }
         } else {
           audio.pause();
+          video?.pause();
         }
       },
       { threshold: 0.2 }
@@ -279,7 +288,6 @@ const Hero = ({ onPreloadComplete }) => {
         className="hero-video absolute inset-0 w-full h-full object-cover z-0 pointer-events-none"
         style={{ objectPosition: '50% 12%' }}
         poster={HERO_VIDEO_POSTER}
-        autoPlay
         muted
         loop
         playsInline
