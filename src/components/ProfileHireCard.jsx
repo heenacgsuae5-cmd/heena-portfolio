@@ -322,7 +322,9 @@ const ProfileHireCard = () => {
 
         <div className="phc-actions">
           <a
-            href={`mailto:${EMAIL}?subject=Hire%20Heena%20Rather`}
+            href="/resume.pdf"
+            target="_blank"
+            rel="noopener noreferrer"
             className="phc-btn phc-btn-primary cursor-target"
             onClick={(e) => e.stopPropagation()}
           >

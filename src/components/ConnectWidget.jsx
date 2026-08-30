@@ -413,7 +413,9 @@ const ConnectWidget = () => {
           <a
             className="social-icon icon-hire cursor-target"
             data-label="Hire Me"
-            href={`mailto:${EMAIL}?subject=Hire%20Heena%20Rather`}
+            href="/resume.pdf"
+            target="_blank"
+            rel="noopener noreferrer"
             aria-label="Hire Me"
           >
             <svg viewBox="0 0 24 24" fill="none">
