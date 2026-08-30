@@ -41,14 +41,31 @@ const Hero = ({ onPreloadComplete }) => {
 
   // Only one audio source plays in the Hero: the voiceover (<audio>,
   // hero-voice.mp3). The background video stays muted at all times — it is
-  // purely visual. Browsers block unmuted autoplay of a new media element,
-  // so we try playing the voiceover unmuted first, and fall back to muted
-  // autoplay if that's blocked, unmuting automatically the moment the user
-  // interacts with the page. The visible mute/unmute button is the manual
-  // override.
+  // purely visual. Crucially, the video does NOT use the native `autoPlay`
+  // attribute: some browsers reliably autoplay a muted <video> but block a
+  // muted/unmuted <audio> element from autoplaying at all, which used to
+  // mean the video started walking immediately while the voiceover only
+  // began (from its own beginning) once the user clicked unmute — by then
+  // the video was already ahead, so the walk and the voice never matched.
+  // Fix: the video is held paused until the exact moment the voiceover
+  // actually starts playing (whichever path gets there — immediate unmuted
+  // autoplay, muted autoplay, or the user's first click/scroll/key), and
+  // both are reset to time 0 and started together at that instant, so they
+  // always begin in sync no matter which path succeeds.
   useEffect(() => {
     const audio = audioRef.current;
+    const video = videoRef.current;
     if (!audio) return;
+
+    let started = false;
+    const startVideoWithAudio = () => {
+      if (started) return;
+      started = true;
+      if (video) {
+        video.currentTime = 0;
+        video.play().catch(() => {});
+      }
+    };
 
     const tryUnmutedPlay = () => {
       audio.muted = false;
@@ -57,12 +74,16 @@ const Hero = ({ onPreloadComplete }) => {
         playPromise
           .then(() => {
             setIsMuted(false);
+            startVideoWithAudio();
           })
           .catch(() => {
-            // Blocked — fall back to muted autoplay
+            // Unmuted autoplay blocked — fall back to muted autoplay, still
+            // starting the video at that same moment so they stay in sync.
             audio.muted = true;
             setIsMuted(true);
-            audio.play().catch(() => {});
+            audio.play().then(startVideoWithAudio).catch(() => {
+              // Even muted autoplay was blocked — wait for user interaction.
+            });
           });
       }
     };
@@ -71,8 +92,15 @@ const Hero = ({ onPreloadComplete }) => {
 
     const unmuteOnInteraction = () => {
       audio.muted = false;
-      audio.play().catch(() => {});
       setIsMuted(false);
+      if (!started) {
+        // Nothing has played yet — start both fresh, together, right now.
+        audio.currentTime = 0;
+        audio.play().then(startVideoWithAudio).catch(() => {});
+      } else {
+        // Already playing (muted) in sync — just unmute, don't restart it.
+        audio.play().catch(() => {});
+      }
       window.removeEventListener('click', unmuteOnInteraction);
       window.removeEventListener('touchstart', unmuteOnInteraction);
       window.removeEventListener('keydown', unmuteOnInteraction);
@@ -226,7 +254,6 @@ const Hero = ({ onPreloadComplete }) => {
         className="hero-video absolute inset-0 w-full h-full object-cover z-0 pointer-events-none"
         style={{ objectPosition: '50% 12%' }}
         poster={HERO_VIDEO_POSTER}
-        autoPlay
         muted
         loop
         playsInline
