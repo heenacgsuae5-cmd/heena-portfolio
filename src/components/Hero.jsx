@@ -5,9 +5,10 @@ const centerImage = 'https://res.cloudinary.com/drjkfozmr/image/upload/v17846349
 const HERO_VIDEO_SRC = '/hero-bg.mp4';
 const HERO_VIDEO_POSTER = '/hero-bg-poster.jpg';
 const HERO_VOICE_SRC = '/hero-voice.mp3';
-// The background video's own original audio track plays alongside the
-// voiceover (not muted out entirely), but kept quiet underneath it.
-const HERO_VIDEO_BG_VOLUME = 0.15;
+// The background video's own original audio track stays fully muted at all
+// times — only the dedicated voiceover track plays. Playing both at once
+// (even with the video quiet underneath) caused an audible echo/double-voice
+// effect, so the video is now silent and purely visual.
 
 const Hero = ({ onPreloadComplete }) => {
   const [text, setText] = useState('RATHER');
@@ -31,37 +32,23 @@ const Hero = ({ onPreloadComplete }) => {
 
   const toggleMute = () => {
     const audio = audioRef.current;
-    const video = videoRef.current;
     if (!audio) return;
     const next = !audio.muted;
     audio.muted = next;
-    if (video) {
-      video.muted = next;
-      video.volume = HERO_VIDEO_BG_VOLUME;
-    }
     if (!next) audio.play().catch(() => {});
     setIsMuted(next);
   };
 
-  // Two audio sources play in the Hero: the main voiceover (<audio>,
-  // hero-voice.mp3) at full volume, and the background video's own original
-  // audio track (kept intact in hero-bg.mp4) underneath it at a low, quiet
-  // volume (HERO_VIDEO_BG_VOLUME) rather than fully muted or fully audible —
-  // so the voiceover stays the clear, dominant voice while the video's
-  // natural sound plays softly behind it. The video keeps playing/looping
-  // visually exactly as before regardless of any of this. Browsers block
-  // unmuted autoplay of a new media element, so we try playing the voiceover
-  // unmuted first; once that resolves we unmute the video too (already
-  // playing, muted, since page load — that flip isn't gated by the
-  // autoplay-with-sound restriction) and immediately clamp its volume down.
-  // Falls back to muted for both, and unmutes both automatically the moment
-  // the user interacts with the page. The visible mute/unmute button is the
-  // manual override.
+  // Only one audio source plays in the Hero: the voiceover (<audio>,
+  // hero-voice.mp3). The background video stays muted at all times — it is
+  // purely visual. Browsers block unmuted autoplay of a new media element,
+  // so we try playing the voiceover unmuted first, and fall back to muted
+  // autoplay if that's blocked, unmuting automatically the moment the user
+  // interacts with the page. The visible mute/unmute button is the manual
+  // override.
   useEffect(() => {
     const audio = audioRef.current;
-    const video = videoRef.current;
     if (!audio) return;
-    if (video) video.volume = HERO_VIDEO_BG_VOLUME;
 
     const tryUnmutedPlay = () => {
       audio.muted = false;
@@ -70,16 +57,11 @@ const Hero = ({ onPreloadComplete }) => {
         playPromise
           .then(() => {
             setIsMuted(false);
-            if (video) {
-              video.muted = false;
-              video.volume = HERO_VIDEO_BG_VOLUME;
-            }
           })
           .catch(() => {
             // Blocked — fall back to muted autoplay
             audio.muted = true;
             setIsMuted(true);
-            if (video) video.muted = true;
             audio.play().catch(() => {});
           });
       }
@@ -89,10 +71,6 @@ const Hero = ({ onPreloadComplete }) => {
 
     const unmuteOnInteraction = () => {
       audio.muted = false;
-      if (video) {
-        video.muted = false;
-        video.volume = HERO_VIDEO_BG_VOLUME;
-      }
       audio.play().catch(() => {});
       setIsMuted(false);
       window.removeEventListener('click', unmuteOnInteraction);
@@ -117,12 +95,10 @@ const Hero = ({ onPreloadComplete }) => {
   // Stop the voiceover once the user scrolls past the Hero section, and
   // resume it automatically if they scroll back up into view. The background
   // video keeps playing/looping visually the whole time either way (it's
-  // just a background), but its own (quiet) audio track is muted while out
-  // of view and restored — at the same low volume, never full volume — to
-  // match the voiceover's mute state when back in view.
+  // just a background) and stays muted throughout — only the voiceover's
+  // play/pause state changes here.
   useEffect(() => {
     const audio = audioRef.current;
-    const video = videoRef.current;
     const section = heroSectionRef.current;
     if (!audio || !section) return;
 
@@ -130,13 +106,8 @@ const Hero = ({ onPreloadComplete }) => {
       ([entry]) => {
         if (entry.isIntersecting) {
           audio.play().catch(() => {});
-          if (video) {
-            video.muted = audio.muted;
-            video.volume = HERO_VIDEO_BG_VOLUME;
-          }
         } else {
           audio.pause();
-          if (video) video.muted = true;
         }
       },
       { threshold: 0.2 }
