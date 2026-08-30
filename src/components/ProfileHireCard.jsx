@@ -94,15 +94,15 @@ const ProfileHireCard = () => {
 
         .profile-hire-card .phc-card {
           position: relative;
-          width: 260px;
+          width: 220px;
           max-width: calc(100vw - 32px);
-          border-radius: 20px;
+          border-radius: 18px;
           border: 1px solid rgba(255,255,255,0.12);
           background: rgba(10,10,10,0.72);
           backdrop-filter: blur(18px);
           -webkit-backdrop-filter: blur(18px);
-          box-shadow: 0 20px 60px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.06);
-          padding: 14px 14px 14px;
+          box-shadow: 0 16px 48px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.06);
+          padding: 11px;
           transition: transform 0.35s cubic-bezier(.2,.8,.2,1), box-shadow 0.35s ease, border-color 0.35s ease, opacity 0.3s ease, max-height 0.35s ease, padding 0.35s ease;
         }
 
@@ -115,7 +115,7 @@ const ProfileHireCard = () => {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          margin-bottom: 12px;
+          margin-bottom: 9px;
         }
 
         .profile-hire-card .phc-status {
@@ -175,12 +175,12 @@ const ProfileHireCard = () => {
         .profile-hire-card .phc-body {
           display: flex;
           align-items: center;
-          gap: 12px;
+          gap: 9px;
         }
 
         .profile-hire-card .phc-avatar {
-          width: 46px;
-          height: 46px;
+          width: 38px;
+          height: 38px;
           border-radius: 50%;
           object-fit: cover;
           border: 1.5px solid rgba(204,255,0,0.55);
@@ -190,7 +190,7 @@ const ProfileHireCard = () => {
         .profile-hire-card .phc-info { min-width: 0; }
 
         .profile-hire-card .phc-name {
-          font-size: 14px;
+          font-size: 13px;
           font-weight: 700;
           color: #fff;
           letter-spacing: -0.01em;
@@ -200,7 +200,7 @@ const ProfileHireCard = () => {
         }
 
         .profile-hire-card .phc-role {
-          font-size: 11px;
+          font-size: 10px;
           color: rgba(255,255,255,0.45);
           margin-top: 2px;
           white-space: nowrap;
@@ -210,21 +210,21 @@ const ProfileHireCard = () => {
 
         .profile-hire-card .phc-actions {
           display: flex;
-          gap: 8px;
-          margin-top: 14px;
+          gap: 6px;
+          margin-top: 10px;
         }
 
         .profile-hire-card .phc-btn {
           flex: 1;
-          height: 34px;
+          height: 30px;
           border-radius: 999px;
-          font-size: 11px;
+          font-size: 10px;
           font-weight: 700;
           letter-spacing: 0.03em;
           display: flex;
           align-items: center;
           justify-content: center;
-          gap: 5px;
+          gap: 4px;
           cursor: pointer;
           border: 1px solid transparent;
           transition: transform 0.25s cubic-bezier(.2,.8,.2,1), box-shadow 0.25s ease, border-color 0.25s ease, background 0.25s ease, color 0.25s ease;
@@ -258,8 +258,8 @@ const ProfileHireCard = () => {
 
         /* Collapsed state — small round avatar chip only, expands back on click */
         .profile-hire-card.collapsed .phc-card {
-          width: 54px;
-          height: 54px;
+          width: 46px;
+          height: 46px;
           padding: 0;
           border-radius: 50%;
           cursor: pointer;
@@ -285,7 +285,7 @@ const ProfileHireCard = () => {
         }
 
         @media (max-width: 420px) {
-          .profile-hire-card .phc-card { width: 232px; }
+          .profile-hire-card .phc-card { width: 196px; }
         }
       `}</style>
 

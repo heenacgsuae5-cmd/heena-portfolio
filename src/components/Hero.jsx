@@ -41,26 +41,33 @@ const Hero = ({ onPreloadComplete }) => {
 
   // Only one audio source plays in the Hero: the voiceover (<audio>,
   // hero-voice.mp3). The background video stays muted at all times — it is
-  // purely visual. Crucially, the video does NOT use the native `autoPlay`
-  // attribute: some browsers reliably autoplay a muted <video> but block a
-  // muted/unmuted <audio> element from autoplaying at all, which used to
-  // mean the video started walking immediately while the voiceover only
-  // began (from its own beginning) once the user clicked unmute — by then
-  // the video was already ahead, so the walk and the voice never matched.
-  // Fix: the video is held paused until the exact moment the voiceover
-  // actually starts playing (whichever path gets there — immediate unmuted
-  // autoplay, muted autoplay, or the user's first click/scroll/key), and
-  // both are reset to time 0 and started together at that instant, so they
-  // always begin in sync no matter which path succeeds.
+  // purely visual, and it keeps the native `autoPlay` HTML attribute (see
+  // JSX below) rather than being started only from JS: `autoPlay` on a muted
+  // <video> is the most reliable, battle-tested autoplay path across mobile
+  // browsers and in-app webviews, and some of those environments never
+  // reliably fire a JS-triggered `.play()` for ANY media element (video or
+  // audio) without a real tap — a Hero that only starts moving once JS
+  // manages to play it is the "video stays frozen/blank on mobile" bug.
+  // Native autoPlay guarantees the video is always moving, on every device.
+  //
+  // To still keep the walk and the voiceover starting together (rather than
+  // the voice starting from its own beginning while the video is already
+  // partway through), the video is RESTARTED (seeked to 0 and replayed) at
+  // the exact instant the voiceover actually begins playing — whichever path
+  // gets there first: immediate unmuted autoplay, muted autoplay, or the
+  // user's first click/tap/scroll/key. In the common case that happens
+  // within a fraction of a second of mount, so the restart is imperceptible;
+  // in the rare case the voice is delayed until a user gesture, the video
+  // was already looping quietly and simply resets in sync with that tap.
   useEffect(() => {
     const audio = audioRef.current;
     const video = videoRef.current;
     if (!audio) return;
 
-    let started = false;
-    const startVideoWithAudio = () => {
-      if (started) return;
-      started = true;
+    let synced = false;
+    const restartVideoInSync = () => {
+      if (synced) return;
+      synced = true;
       if (video) {
         video.currentTime = 0;
         video.play().catch(() => {});
@@ -74,15 +81,16 @@ const Hero = ({ onPreloadComplete }) => {
         playPromise
           .then(() => {
             setIsMuted(false);
-            startVideoWithAudio();
+            restartVideoInSync();
           })
           .catch(() => {
             // Unmuted autoplay blocked — fall back to muted autoplay, still
-            // starting the video at that same moment so they stay in sync.
+            // restarting the video at that same moment so they stay in sync.
             audio.muted = true;
             setIsMuted(true);
-            audio.play().then(startVideoWithAudio).catch(() => {
+            audio.play().then(restartVideoInSync).catch(() => {
               // Even muted autoplay was blocked — wait for user interaction.
+              // The video keeps playing on its own via autoPlay regardless.
             });
           });
       }
@@ -93,10 +101,10 @@ const Hero = ({ onPreloadComplete }) => {
     const unmuteOnInteraction = () => {
       audio.muted = false;
       setIsMuted(false);
-      if (!started) {
-        // Nothing has played yet — start both fresh, together, right now.
+      if (!synced) {
+        // Voice hasn't played yet — start it fresh and resync the video.
         audio.currentTime = 0;
-        audio.play().then(startVideoWithAudio).catch(() => {});
+        audio.play().then(restartVideoInSync).catch(() => {});
       } else {
         // Already playing (muted) in sync — just unmute, don't restart it.
         audio.play().catch(() => {});
@@ -150,6 +158,19 @@ const Hero = ({ onPreloadComplete }) => {
     window.scrollTo(0, 0);
     document.body.style.overflow = 'hidden';
 
+    // The HEENA name's size and resting position are driven by ORIENTATION,
+    // not a fixed pixel-width breakpoint: a tall/narrow (portrait) frame
+    // always crops the cover-fit video in much tighter around the face than
+    // a wide (landscape) one does, at any width — a portrait tablet behaves
+    // just like a phone here, not like desktop. clamp() keeps the text from
+    // ever growing large enough to reach the face even on unusual sizes.
+    if (textRef.current) {
+      const isPortrait = window.innerHeight > window.innerWidth;
+      textRef.current.style.fontSize = isPortrait
+        ? 'clamp(2.5rem, 11vw, 4.5rem)'
+        : 'clamp(4rem, 9vw, 11rem)';
+    }
+
     const target = "HEENA";
     const start = "RATHER";
     let iterations = 0;
@@ -201,10 +222,14 @@ const Hero = ({ onPreloadComplete }) => {
             }
           });
 
-          // 1. Move the central text container up from 50% to its resting place
-          const isMobile = window.innerWidth < 768;
+          // 1. Move the central text container from 50% to its resting place.
+          // In portrait (phone, or a tablet held upright) the video's face
+          // ends up larger and lower in the cropped frame, so the text rests
+          // further down (55%) to clear it; landscape/desktop has more
+          // breathing room above the shoulders and keeps the original 45%.
+          const isPortrait = window.innerHeight > window.innerWidth;
           tl.to(containerRef.current, {
-            top: isMobile ? "20%" : "45%",
+            top: isPortrait ? "55%" : "45%",
             duration: 1.5,
             ease: "power3.inOut"
           }, "+=0.2"); // slight delay after scramble finishes
@@ -254,9 +279,11 @@ const Hero = ({ onPreloadComplete }) => {
         className="hero-video absolute inset-0 w-full h-full object-cover z-0 pointer-events-none"
         style={{ objectPosition: '50% 12%' }}
         poster={HERO_VIDEO_POSTER}
+        autoPlay
         muted
         loop
         playsInline
+        webkit-playsinline="true"
         preload="auto"
       >
         <source src={HERO_VIDEO_SRC} type="video/mp4" />
@@ -274,7 +301,7 @@ const Hero = ({ onPreloadComplete }) => {
         type="button"
         onClick={toggleMute}
         aria-label={isMuted ? 'Unmute voiceover' : 'Mute voiceover'}
-        className="absolute top-24 right-4 md:top-28 md:right-8 z-30 w-10 h-10 md:w-11 md:h-11 rounded-full border border-white/20 bg-black/40 backdrop-blur-md flex items-center justify-center text-white hover:border-[#ccff00]/60 hover:text-[#ccff00] transition-colors duration-300 pointer-events-auto"
+        className="absolute top-4 right-4 sm:top-5 sm:right-5 md:top-6 md:right-6 z-30 w-10 h-10 md:w-11 md:h-11 rounded-full border border-white/20 bg-black/40 backdrop-blur-md flex items-center justify-center text-white hover:border-[#ccff00]/60 hover:text-[#ccff00] transition-colors duration-300 pointer-events-auto"
       >
         {isMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
       </button>
@@ -289,7 +316,7 @@ const Hero = ({ onPreloadComplete }) => {
       >
         <h1
           ref={textRef}
-          className="text-[16vw] md:text-[10rem] lg:text-[14rem] font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white via-gray-300 to-gray-800 drop-shadow-2xl pr-4 md:pr-8 leading-none uppercase"
+          className="font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white via-gray-300 to-gray-800 drop-shadow-2xl pr-4 md:pr-8 leading-none uppercase"
         >
           {text}
         </h1>
