@@ -112,8 +112,7 @@ Then open the local development URL shown by Vite.
 **LinkedIn**
 [linkedin.com/in/heena-rather-b8927117b](https://www.linkedin.com/in/heena-rather-b8927117b/)
 
-**Email**
-heena­[rather408@gmail.com](mailto:rather408@gmail.com)
+
 
 ---
 
