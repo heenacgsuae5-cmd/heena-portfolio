@@ -1,16 +1,43 @@
-# React + Vite
+# Heena Rather — Portfolio
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Personal portfolio website for **Heena Rather**, Freight Broker & Logistics Specialist and Digital Solutions Creator.
 
-Currently, two official plugins are available:
+**Live site:** [heena-portfolio-three.vercel.app](https://heena-portfolio-three.vercel.app)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## About
 
-## React Compiler
+This site showcases Heena's work across freight brokerage, logistics, and digital/web development — combining a professional services portfolio with a modern, animated frontend build.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Features
 
-## Expanding the ESLint configuration
+- Animated hero section with background video, voiceover, and scroll-triggered GSAP animations
+- Mute-controlled video/audio playback (unmute to see the intro play in sync)
+- Downloadable / viewable resume
+- Floating "Hire Me" profile card with quick contact options
+- Social + contact connect widget (LinkedIn, GitHub, email, freight quote tool)
+- Fully responsive across desktop, tablet, and mobile
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Tech Stack
+
+- [React](https://react.dev/) + [Vite](https://vitejs.dev/)
+- [GSAP](https://gsap.com/) for animation
+- Tailwind CSS
+- Deployed on [Vercel](https://vercel.com/)
+
+## Getting Started
+
+```bash
+npm install
+npm run dev
+```
+
+Build for production:
+
+```bash
+npm run build
+```
+
+## Contact
+
+- Email: heenarather408@gmail.com
+- LinkedIn: [linkedin.com/in/heena-rather-b8927117b](https://www.linkedin.com/in/heena-rather-b8927117b/)
